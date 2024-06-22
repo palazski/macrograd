@@ -4,3 +4,5 @@
 venv
 .venv
 macrograd.egg-info
+build
+trial.ipynb
