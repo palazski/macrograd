@@ -11,7 +11,7 @@ Built on top of [micrograd](https://github.com/karpathy/micrograd) by [Andrej Ka
 ### Installation
 
 ```bash
-pip install https://github.com/palazski/macrograd.git
+git clone https://github.com/palazski/macrograd.git
 ```
 ```bash
 cd macrograd
