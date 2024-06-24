@@ -54,20 +54,68 @@ class Tensor:
         if isinstance(key, (slice, int)) and len(self.shape) < 1:
             raise ValueError(f'cannot slice (1) more than shape of the Tensor (< 1)')
         
+        def _handle_slice_index(key: slice, len_data: int) -> slice:
+            step = 1 if not key.step else key.step
+
+            start = key.start
+            if not start:
+                start = 0 if step > 0 else len_data - 1
+
+            stop = key.stop
+            if not stop:
+                stop = len_data + 1 if step > 0 else -len_data - 1
+
+            if start < 0:
+                while start > 0:
+                    start = len_data + start
+
+            if stop < 0:
+                while stop > 0:
+                    stop = len_data + stop
+
+            return slice(start, stop, step)
+        
+        def __handle_integer_index(key: int, len_data: int) -> int:
+            if key > len_data:
+                # raise IndexError(f'index 3 is out of bounds for axis 0 with size 3')  # TODO: Give axis information
+                raise IndexError(f'index {key} is out of bounds for axis with size {len_data}')
+            
+            if key < 0:
+                key = key + len_data
+            
+            return key
+
         val_return = None
         if isinstance(key, slice):
+            key = _handle_slice_index(key, len(self.data))
             val_return = self.data[key.start:key.stop:key.step]
         elif isinstance(key, tuple):
             val_return = self.data
-            for i, dim in enumerate(key):
-                # TODO: This implementation based on i should not be correct, test throughly
+            low_rank = False
+            for dim in key:
+                print(f'Current val: {val_return}')
+                print(f'low rank: {low_rank}')
                 if isinstance(dim, slice):
-                    val_return = val_return[dim.start:dim.stop:dim.step] if i == 0 else [item[dim.start:dim.stop:dim.step] for item in val_return]
+                    # listeyken slice ile icinde liste donduysen rank dustu
+                    # listeyken slice ile liste donmediysen rank sabit
+
+                    # su an rank dusmuyor.........
+                    if low_rank:
+                        while len(val_return) == 1:
+                            val_return = val_return[0]
+                    dim = _handle_slice_index(dim, len(val_return))
+                    print(f"Inner slice is: {dim}")
+                    val_return = [item[dim.start:dim.stop:dim.step] for item in val_return] if low_rank else val_return[dim.start:dim.stop:dim.step]
+                    low_rank = isinstance(val_return[0], list)
+
                 elif isinstance(dim, int):
-                    val_return = val_return[dim] if i == 0 else [item[dim] for item in val_return]
+                    print(f"Inner int dim is: {dim}")
+                    dim = __handle_integer_index(dim, len(val_return))
+                    val_return = [item[dim] for item in val_return] if low_rank else val_return[dim]
                 else:
                     raise ValueError(f'slicing with {type(dim)} is not supported')
         elif isinstance(key, int):
+            key = __handle_integer_index(key, len(self.data))
             val_return = self.data[key]
         else:
             raise ValueError(f'slicing with {type(key)} is not supported')
@@ -88,6 +136,9 @@ class Tensor:
     
     def __str__(self):
         return str(self.data)
+    
+    def tolist(self):
+        return self.data
 
     @classmethod
     def from_zeros(shape):
